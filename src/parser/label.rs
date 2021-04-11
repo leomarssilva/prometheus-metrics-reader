@@ -1,20 +1,26 @@
 use std::collections::HashMap;
 use std::str::FromStr;
 
+/// List of labels for a [SampleData](super::SampleData). See examples at [try_read_sample](super::try_read_sample) for more details.
 #[derive(Debug, PartialEq)]
-pub struct Label(HashMap<String, String>);
+pub struct LabelList(HashMap<String, String>);
 
-impl Label {
+impl LabelList {
     pub fn new() -> Self {
-        Label(HashMap::new())
+        LabelList(HashMap::new())
     }
+
     pub fn from_map(h: HashMap<String, String>) -> Self {
-        Label(h)
+        LabelList(h)
     }
+
+    /// tries to read a label as string.
     pub fn get_string(&self, key: &str) -> Option<&String> {
         self.0.get(key)
     }
-    pub fn get_float(&self, key: &str) -> Option<f64> {
+
+    /// tries to read a label as a [`f64`], returning [`None`] if the label doesn't exist or cannot be represented as a [`f64`]
+    pub fn get_number(&self, key: &str) -> Option<f64> {
         self.0.get(key).and_then(|s| match s.as_str() {
             "+Inf" => Some(f64::INFINITY),
             "-Inf" => Some(f64::NEG_INFINITY),
@@ -23,7 +29,12 @@ impl Label {
     }
 }
 
-impl From<Vec<(&str, String)>> for Label {
+impl Default for LabelList {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+impl From<Vec<(&str, String)>> for LabelList {
     fn from(input: Vec<(&str, String)>) -> Self {
         let mut map = HashMap::with_capacity(input.len());
 
@@ -31,13 +42,13 @@ impl From<Vec<(&str, String)>> for Label {
             map.insert(key.to_string(), value);
         }
 
-        Label(map)
+        LabelList(map)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::label::Label;
+    use crate::parser::label::LabelList;
     use std::collections::HashMap;
 
     #[test]
@@ -50,13 +61,13 @@ mod tests {
         m.insert("test5".into(), "alfa".into());
         m.insert("test6".into(), "".into());
 
-        let l = Label::from_map(m);
+        let l = LabelList::from_map(m);
 
-        assert_eq!(l.get_float("test1"), Some(0.0015));
-        assert_eq!(l.get_float("test2"), Some(-17560473.0));
-        assert_eq!(l.get_float("test3"), Some(f64::INFINITY));
-        assert_eq!(l.get_float("test4"), Some(f64::NEG_INFINITY));
-        assert_eq!(l.get_float("test5"), None);
-        assert_eq!(l.get_float("test6"), None);
+        assert_eq!(l.get_number("test1"), Some(0.0015));
+        assert_eq!(l.get_number("test2"), Some(-17560473.0));
+        assert_eq!(l.get_number("test3"), Some(f64::INFINITY));
+        assert_eq!(l.get_number("test4"), Some(f64::NEG_INFINITY));
+        assert_eq!(l.get_number("test5"), None);
+        assert_eq!(l.get_number("test6"), None);
     }
 }
