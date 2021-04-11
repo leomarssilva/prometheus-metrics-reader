@@ -13,6 +13,7 @@ use nom::{
 
 use crate::parser::comment::Comment;
 use crate::parser::label::Label;
+use crate::parser::metric_data::MetricData;
 
 type NomRes<I, O> = IResult<I, O, VerboseError<I>>;
 
@@ -84,9 +85,13 @@ pub fn read_comment_line(input: &str) -> NomRes<&str, Comment> {
 }
 
 // https://prometheus.io/docs/instrumenting/exposition_formats/#comments-help-text-and-type-information
-pub fn read_metric_line(input: &str) -> NomRes<&str, (&str, Label, f64, Option<i64>)> {
+pub fn read_metric_line(input: &str) -> NomRes<&str, MetricData> {
     let input = input.trim();
-    tuple((read_variable_name, read_label, read_value, read_timestamp))(input)
+    tuple((read_variable_name, read_label, read_value, read_timestamp))(input).map(
+        |(out, (name, label, value, timestamp))| {
+            (out, MetricData::new(name, label, value, timestamp))
+        },
+    )
 }
 
 #[cfg(test)]
@@ -234,7 +239,10 @@ mod tests {
 
         assert_eq!(
             read_metric_line(s).unwrap(),
-            ("", ("something_weird", l, f64::INFINITY, Some(-3982045)))
+            (
+                "",
+                MetricData::new("something_weird", l, f64::INFINITY, Some(-3982045))
+            )
         );
 
         let s = "msdos_file_access_time_seconds{path=\"C:\\\\DIR\\\\FILE.TXT\",error=\"Cannot find file:\\n\\\"FILE.TXT\\\"\"} 1.458255915e9";
@@ -250,7 +258,7 @@ mod tests {
             read_metric_line(s).unwrap(),
             (
                 "",
-                ("msdos_file_access_time_seconds", l, 1458255915.0, None)
+                MetricData::new("msdos_file_access_time_seconds", l, 1458255915.0, None)
             )
         );
     }
